@@ -41,14 +41,11 @@ void OBSthread::read_2_11(fstream &rnx){
     bool stop = false;
     int num = 1;
     num++;
-    cout << num << endl;
+
+    string s;
+    getline(rnx, s);
     while (!rnx.eof() and stop == false) {
 
-        cout << num << endl;
-        num++;
-
-        string s;
-        getline(rnx, s);
         smatch m;
 
         if(regex_search(s, m, regex("\\s{1,}(\\d{1,})\\s.*# / TYPES OF OBSERV"))){
@@ -62,28 +59,67 @@ void OBSthread::read_2_11(fstream &rnx){
             continue;
         }
 
-//        if(regex_search(s, regex("???TIME OF FIRST OBS"))){
-//            cout << "!!!";
-//            QDate DFirst;
-//            QTime TFirst;
-//            DFirst.setDate(su(str), stoi(m[2]), stoi(m[3]));
-//            TFirst.setHMS(stoi(m[4]), stoi(m[5]), stoi(m[6]));
-//            file.begin.setDate(DFirst);
-//            file.begin.setTime(TFirst);
-//        }
-//        if(regex_search(s, m, regex("???TIME OF LAST OBS"))){
-//            QDate DLast;
-//            QTime TLast;
-//            DLast.setDate(stoi(m[1]), stoi(m[2]), stoi(m[3]));
-//            TLast.setHMS(stoi(m[4]), stoi(m[5]), stoi(m[6]));
-//            file.end.setDate(DLast);
-//            file.end.setTime(TLast);
-//            cout << file.end.toString().toStdString() << endl;
-//        }
+        if(regex_search(s, m, regex("\\s*(\\S*)\\s*INTERVAL")))
+        {
+            file.interval = stoi(m[1]);
+
+            getline(rnx, s);
+            continue;
+        }
+
+        if(regex_search(s, regex(".*TIME OF FIRST OBS"))){
+            QDate DFirst;
+            QTime TFirst;
+            DFirst.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
+            TFirst.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
+            file.begin.setDate(DFirst);
+            file.begin.setTime(TFirst);
+
+            getline(rnx, s);
+            continue;
+        }
+
+        if(regex_search(s, m, regex("TIME OF LAST OBS"))){
+            QDate DEnd;
+            QTime TEnd;
+            DEnd.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
+            TEnd.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
+            file.end.setDate(DEnd);
+            file.end.setTime(TEnd);
+
+            getline(rnx, s);
+            continue;
+        }
 
         if(regex_search(s, regex("END OF HEADER"))){
             stop = true;
         }
+        getline(rnx, s);
+    }
+
+    stop = false;
+    while (!rnx.eof() and stop == false) {
+        smatch m;
+        int num;
+        if(regex_search(s, m, regex("([0-9]{1,2})\\s*[G,R,E]"))){
+            num = stoi(m[1]);
+            QDate now;
+            QTime nowT;
+
+            now.setDate(stoi(s.substr(0,3)), stoi(s.substr(3,3)), stoi(s.substr(6,3)));
+            cout << now.toJulianDay() << endl;
+            nowT.setHMS(stoi(s.substr(9,3)), stoi(s.substr(12,3)), stoi(s.substr(15,11)));
+            cout << now.toJulianDay() + (nowT.hour()-12)/24. + nowT.minute()/1440. + nowT.second()/86400. << endl;
+            cout << qPrintable(nowT.toString()) << endl;
+            do {
+                //cout << num << endl;
+                num -= 12;
+                getline(rnx, s);
+            } while (num > 12);
+        }
+
+
+        getline(rnx, s);
     }
 }
 

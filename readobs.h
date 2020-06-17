@@ -38,6 +38,7 @@ public:
     fstream loadOBS(QString);
     void getSP3(fstream &file, QMap<QDateTime,QMap<int, vector<double>>> &XYZ);
     int length;
+    int interval;
     string name;
     QStringList ObsType;
     Ltype dat;
@@ -51,6 +52,7 @@ class OBSthread : public QObject
 public:
     OBSthread(QString, QMap<QDateTime, QMap<QString, QMap<QString, double>>>);
     void read_2_11(fstream &rnx);
+    OBS regTypes(OBS);
 
 public slots:
     void run();
