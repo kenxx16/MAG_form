@@ -90,9 +90,9 @@ void OBSthread::read_2_11(fstream &rnx){
 #include <sstream>
 #include <vector>
 #include <string>
+#include <utility>
 
-
-#define RNX_MEAS_DATA vector<double const *>
+#define RNX_MEAS_DATA vector<pair<string, double const *>>
 
 
 
