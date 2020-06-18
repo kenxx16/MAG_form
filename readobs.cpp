@@ -34,18 +34,20 @@ OBSthread::OBSthread(QString str,Ltype inL_){
 }
 
 //---
-
 void OBSthread::read_2_11(fstream &rnx){
     cout<<"!!";
     OBS file;
     bool stop = false;
     int num = 1;
     num++;
-
-    string s;
-    getline(rnx, s);
+    cout << num << endl;
     while (!rnx.eof() and stop == false) {
 
+        cout << num << endl;
+        num++;
+
+        string s;
+        getline(rnx, s);
         smatch m;
 
         if(regex_search(s, m, regex("\\s{1,}(\\d{1,})\\s.*# / TYPES OF OBSERV"))){
@@ -59,69 +61,96 @@ void OBSthread::read_2_11(fstream &rnx){
             continue;
         }
 
-        if(regex_search(s, m, regex("\\s*(\\S*)\\s*INTERVAL")))
-        {
-            file.interval = stoi(m[1]);
-
-            getline(rnx, s);
-            continue;
-        }
-
-        if(regex_search(s, regex(".*TIME OF FIRST OBS"))){
-            QDate DFirst;
-            QTime TFirst;
-            DFirst.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
-            TFirst.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
-            file.begin.setDate(DFirst);
-            file.begin.setTime(TFirst);
-
-            getline(rnx, s);
-            continue;
-        }
-
-        if(regex_search(s, m, regex("TIME OF LAST OBS"))){
-            QDate DEnd;
-            QTime TEnd;
-            DEnd.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
-            TEnd.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
-            file.end.setDate(DEnd);
-            file.end.setTime(TEnd);
-
-            getline(rnx, s);
-            continue;
-        }
+//        if(regex_search(s, regex("???TIME OF FIRST OBS"))){
+//            cout << "!!!";
+//            QDate DFirst;
+//            QTime TFirst;
+//            DFirst.setDate(su(str), stoi(m[2]), stoi(m[3]));
+//            TFirst.setHMS(stoi(m[4]), stoi(m[5]), stoi(m[6]));
+//            file.begin.setDate(DFirst);
+//            file.begin.setTime(TFirst);
+//        }
+//        if(regex_search(s, m, regex("???TIME OF LAST OBS"))){
+//            QDate DLast;
+//            QTime TLast;
+//            DLast.setDate(stoi(m[1]), stoi(m[2]), stoi(m[3]));
+//            TLast.setHMS(stoi(m[4]), stoi(m[5]), stoi(m[6]));
+//            file.end.setDate(DLast);
+//            file.end.setTime(TLast);
+//            cout << file.end.toString().toStdString() << endl;
+//        }
 
         if(regex_search(s, regex("END OF HEADER"))){
             stop = true;
         }
-        getline(rnx, s);
-    }
-
-    stop = false;
-    while (!rnx.eof() and stop == false) {
-        smatch m;
-        int num;
-        if(regex_search(s, m, regex("([0-9]{1,2})\\s*[G,R,E]"))){
-            num = stoi(m[1]);
-            QDate now;
-            QTime nowT;
-
-            now.setDate(stoi(s.substr(0,3)), stoi(s.substr(3,3)), stoi(s.substr(6,3)));
-            cout << now.toJulianDay() << endl;
-            nowT.setHMS(stoi(s.substr(9,3)), stoi(s.substr(12,3)), stoi(s.substr(15,11)));
-            cout << now.toJulianDay() + (nowT.hour()-12)/24. + nowT.minute()/1440. + nowT.second()/86400. << endl;
-            cout << qPrintable(nowT.toString()) << endl;
-            do {
-                //cout << num << endl;
-                num -= 12;
-                getline(rnx, s);
-            } while (num > 12);
-        }
-
-
-        getline(rnx, s);
     }
 }
+
+
+#include <sstream>
+#include <vector>
+#include <string>
+
+
+#define RNX_MEAS_DATA vector<double const *>
+
+
+
+/*	Как может выглядеть функция, которая парсит ринекс измерения
+ *  input:
+ *		fstream const & 		- адрес константного fstream объекта
+ *		vector<const string> &	- адрес массива строк с именами параметров, которые тебе нужны (L1, L2 и т.д.)
+ *	output:
+ *		RNX_MEAS_DATA 	- тот самый массив данных, который тебе надо прочитать
+*/
+RNX_MEAS_DATA ParseRinexObs(fstream const &fRef, vector<const string> &measParams){
+	// Создаём объект, в котором будем хроанить распарсенные данные
+	RNX_MEAS_DATA measData;
+	
+	vector<string> fMeasParams;
+	bool isHeaderEnd {false};
+	bool stop {false};
+	string fString {};
+	smatch regMatch;
+	
+	// Ищем в заголовке типы измерений
+	while(!fRef.eof() && !isHeaderEnd && !regex_match(fString, ".*# / TYPES OF OBSERV")){
+		isHeaderEnd = regex_match(fString, ".*END OF HEADER");
+		getline(fRef, fString);
+	}
+	while(!fRef.eof() && !isHeaderEnd && regex_search(fString, regMatch, ".*# / TYPES OF OBSERV")){
+		// Тут читаешь параметры измерений (L1, L2, P1, P2)
+		//		Если параметр есть в списке measParams, добавляешь его в fMeasParams
+		//		Так можно сделать чтение произвольного числа параметров
+		getline(fRef, fString);
+	}
+	while(!fRef.eof() && !isHeaderEnd){
+		isHeaderEnd = regex_match(fString, ".*END OF HEADER");
+		getline(fRef, fString);
+	}
+	
+	// Если заголовок закончился, а параметры так и не нашлись
+	//		Возвращаем пустой массив
+	if (isHeaderEnd && fMeasParams.size() == 0){
+		return RNX_MEAS_DATA();
+	}
+
+	// Читаем массив измерений
+	vector<string> satList {};		// List of satellites in 
+	while(!fRef.eof() && !stop){
+		getline(fRef, fString);
+		
+		if(isEphHeader(fString)){
+			ReadHeader(fString, ephMjd, satList);
+		}else{
+			ReadEphMeas(fString, measData);
+		}
+	}
+	
+	return measData;
+}
+
+
 
 void OBSthread::run(){
     fstream rnx = OBS().loadOBS(file_);
