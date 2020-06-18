@@ -94,7 +94,25 @@ void OBSthread::read_2_11(fstream &rnx){
 
 #define RNX_MEAS_DATA vector<pair<string, double const *>>
 
+/* Прочитать строку из заголовка эпохи
+ *	input:
+ *		fString - строка, которую надо прочитать
+ *		ephMjd  - ссылка на MJD эпохи
+ *		satList - ссылка на массив аппаратов
+*/
+void ReadHeader(string fString, double &ephMjd, vector<string> &satList){
+	// Парсинг строки из заголока здесь
+}
 
+
+/* прочитать строку из тела записи.
+ *	input:
+ *		fString - строка файла, содержащая измерения
+ *		measData - массив измерений
+*/
+void ReadEphMeas(string fString, RNX_MEAS_DATA &measData){
+	// Парсинг тела файла здесь
+}
 
 /*	Как может выглядеть функция, которая парсит ринекс измерения
  *  input:
@@ -149,8 +167,6 @@ RNX_MEAS_DATA ParseRinexObs(fstream const &fRef, vector<const string> &measParam
 	
 	return measData;
 }
-
-
 
 void OBSthread::run(){
     fstream rnx = OBS().loadOBS(file_);
