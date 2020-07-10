@@ -22,6 +22,8 @@ using namespace boost::numeric;
 typedef QMap<QDateTime, QMap<QString, QMap<QString, double>>> Ltype;
 typedef QMap<QDateTime,QMap<int, vector<double>>> SPtype;
 
+
+
 Q_DECLARE_METATYPE(Ltype);
 Q_DECLARE_METATYPE(SPtype);
 

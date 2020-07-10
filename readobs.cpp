@@ -7,7 +7,7 @@ OBS::OBS(){
 
 //---
 
-void count_match(QStringList &ret, const std::string& user_string, const std::string& user_pattern, const std::string& flags = "o" ){
+void count_match(vector<string> &satList, const std::string& user_string, const std::string& user_pattern, const std::string& flags = "o" ){
 
 const bool flags_has_i = flags.find( "i" ) < flags.size();
 const bool flags_has_g = flags.find( "g" ) < flags.size();
@@ -21,7 +21,8 @@ std::string temp = user_string;
 
 while( std::regex_search( temp, mr, rx ) ){
     temp = mr.suffix().str();
-    ret.push_back(mr[1].str().c_str());
+    satList.push_back(mr[1].str().c_str());
+    cout << mr[1].str().c_str() << endl;
     ++counter;
     }
 }
@@ -35,25 +36,21 @@ OBSthread::OBSthread(QString str,Ltype inL_){
 
 //---
 
-void OBSthread::read_2_11(fstream &rnx){
-    cout<<"!!";
-    OBS file;
-    bool stop = false;
-    int num = 1;
-    num++;
+#define RNX_MEAS_DATA vector<pair<string, double const *>>;
 
+void ReadHeader(fstream &rnx, OBS file, double &ephMjd, vector<string> &satList){
+    bool stop = false;
     string s;
     getline(rnx, s);
+
     while (!rnx.eof() and stop == false) {
-
         smatch m;
-
         if(regex_search(s, m, regex("\\s{1,}(\\d{1,})\\s.*# / TYPES OF OBSERV"))){
-            file.length = stoi(m[1]);
             int snum = stoi(m[1])/9;
+            file.length = stoi(m[1]);
             for (int i=0; i<=snum; i++) {
                 smatch n;
-                count_match(file.ObsType, s, "([A-Z][0-9])", "g");
+                count_match(satList, s, "([A-Z][0-9])", "g");
                 getline(rnx, s);
             }
             continue;
@@ -62,64 +59,127 @@ void OBSthread::read_2_11(fstream &rnx){
         if(regex_search(s, m, regex("\\s*(\\S*)\\s*INTERVAL")))
         {
             file.interval = stoi(m[1]);
-
             getline(rnx, s);
             continue;
         }
 
-        if(regex_search(s, regex(".*TIME OF FIRST OBS"))){
-            QDate DFirst;
-            QTime TFirst;
-            DFirst.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
-            TFirst.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
-            file.begin.setDate(DFirst);
-            file.begin.setTime(TFirst);
+//        if(regex_search(s, regex(".*TIME OF FIRST OBS"))){
+//            QDate DFirst;
+//            QTime TFirst;
+//            DFirst.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
+//            TFirst.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
+//            file.begin.setDate(DFirst);
+//            file.begin.setTime(TFirst);
 
-            getline(rnx, s);
-            continue;
-        }
+//            getline(rnx, s);
+//            continue;
+//        }
 
-        if(regex_search(s, m, regex("TIME OF LAST OBS"))){
-            QDate DEnd;
-            QTime TEnd;
-            DEnd.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
-            TEnd.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
-            file.end.setDate(DEnd);
-            file.end.setTime(TEnd);
+//        if(regex_search(s, m, regex("TIME OF LAST OBS"))){
+//            QDate DEnd;
+//            QTime TEnd;
+//            DEnd.setDate(stoi(s.substr(0,6)), stoi(s.substr(6,6)), stoi(s.substr(12,6)));
+//            TEnd.setHMS(stoi(s.substr(18,6)), stoi(s.substr(24,6)), stoi(s.substr(30,18)));
+//            file.end.setDate(DEnd);
+//            file.end.setTime(TEnd);
 
-            getline(rnx, s);
-            continue;
-        }
+//            getline(rnx, s);
+//            continue;
+//        }
 
         if(regex_search(s, regex("END OF HEADER"))){
             stop = true;
-        }
-        getline(rnx, s);
+            cout<<"next"<<endl;
+        }else {getline(rnx, s);}
     }
+}
 
+void OBSthread::read_2_11(fstream &rnx){
+    OBS file;
+    bool stop = false;
+    int num = 1;
+    num++;
+
+    string s;
+    double eph;
+    vector<string> satList;
+    QMap<int,vector<string>> sat;
+    double obj;
+    ReadHeader(rnx, file, eph, satList);
+    int time=0;
     stop = false;
     while (!rnx.eof() and stop == false) {
+
         smatch m;
         int num;
+
         if(regex_search(s, m, regex("([0-9]{1,2})\\s*[G,R,E]"))){
+            time++;
+
             num = stoi(m[1]);
             QDate now;
             QTime nowT;
 
-            now.setDate(stoi(s.substr(0,3)), stoi(s.substr(3,3)), stoi(s.substr(6,3)));
-            cout << now.toJulianDay() << endl;
-            nowT.setHMS(stoi(s.substr(9,3)), stoi(s.substr(12,3)), stoi(s.substr(15,11)));
-            cout << now.toJulianDay() + (nowT.hour()-12)/24. + nowT.minute()/1440. + nowT.second()/86400. << endl;
-            cout << qPrintable(nowT.toString()) << endl;
-            do {
-                //cout << num << endl;
-                num -= 12;
+
+//            now.setDate(stoi(s.substr(0,3)), stoi(s.substr(3,3)), stoi(s.substr(6,3)));
+//            nowT.setHMS(stoi(s.substr(9,3)), stoi(s.substr(12,3)), stoi(s.substr(15,11)));
+//            cout << now.toJulianDay() + (nowT.hour()-12)/24. + nowT.minute()/1440. + nowT.second()/86400. << endl;
+//            cout << qPrintable(nowT.toString()) << endl;
+
+
+            //чтение заголовка записей
+            for(int v=num/12; v>=0; v--) {
+                if(v==0 and num%12==0){continue;}
+                //cout<<endl<<s;
+                int q;
+                if(v != 0){q = 12;}else {q = num%12;}
+                for (int y=0; y<q; y++) {
+                    //cout << " *";
+                    sat[time].push_back(s.substr(32+3*y, 3));
+                }
                 getline(rnx, s);
-            } while (num > 12);
+            }
+            //------------------------
+
+
+
+            //чтение записей
+
+
+            for (string ws : sat[time]) {
+                //cout<<s<<endl;
+                for(int v=file.length/5; v>=0; v--) {
+                    if(v==0 and file.length%5==0){continue;}
+                    //cout<<s<<endl;
+                    int q;
+                    if(v != 0){q = 5;}else {q = file.length%5;}
+                    for (int y=0; y<q; y++) {
+                        cout << s.substr(16*y, 16);
+                        //sat[time].push_back(s.substr(16*y, 16));
+                    }
+                    getline(rnx, s);
+                }
+                cout<<endl;
+            }
+
+
+            //------------------------
+
+
+
         }
 
 
         getline(rnx, s);
+    }
+
+    cout<<"done"<<endl;
+
+    for (int time = 0; time < sat.size(); time++) {
+        for (int w = 0; w < sat[time].size(); w++) {
+            cout << sat[time][w] << " ' ";
+        }
+        cout<<endl;
     }
 }
 
